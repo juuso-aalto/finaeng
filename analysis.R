@@ -87,60 +87,61 @@ for (sheet_no in 1:12) {
   sheets_results_mean <- append(sheets_results_mean, mean(strike_performances[strike_performances != 0]))
   sheets_results_std <- append(sheets_results_std, sd(strike_performances[strike_performances != 0]))
 
-kokodatat <- vector()
+  kokodatat <- vector()
   for (m in 2:(length(data)-3)){
     if(length(which(!is.na(data[,m])))==dim(data)[1]){kokodatat<-append(kokodatat,m)}
   }
-#looppi tähän:
-for (s in 1:10){
-indeksit<-sample(kokodatat,3,replace=FALSE)
-eka<-sort(indeksit)[1]
-toka<-sort(indeksit)[2]
-kolmas<-sort(indeksit)[3]
-Portfoliodelta = deltas[1,eka-1]
-Portfoliogamma = gammas[1,eka-1]
-Portfoliovega = vegas[1,eka-1]
-optio_2_positio=0
-optio_3_positio=0
-underlying_positio=0
-counter=0
 
-dailyerrors=c(rep(0,(length(data$daystomaturity)-2)))
-for (n in 2:(length(data$daystomaturity)-1)){
-A=matrix(
-  c(deltas[n-1,toka-1],deltas[n-1,kolmas-1],1,gammas[n-1,toka-1],gammas[n-1,kolmas-1],0,vegas[n-1,toka-1],vegas[n-1,kolmas-1],0),
-  nrow=3,
-  ncol=3,
-  byrow=TRUE
-)
+  # Do this 10 times for each sheet
+  for (s in 1:10){
+    indeksit<-sample(kokodatat,3,replace=FALSE)
+    eka<-sort(indeksit)[1]
+    toka<-sort(indeksit)[2]
+    kolmas<-sort(indeksit)[3]
+    Portfoliodelta = deltas[1,eka-1]
+    Portfoliogamma = gammas[1,eka-1]
+    Portfoliovega = vegas[1,eka-1]
+    optio_2_positio=0
+    optio_3_positio=0
+    underlying_positio=0
+    counter=0
 
-B=c(-Portfoliodelta,-Portfoliogamma,-Portfoliovega)
+    dailyerrors=c(rep(0,(length(data$daystomaturity)-2)))
+    for (n in 2:(length(data$daystomaturity)-1)){
+      A=matrix(
+        c(deltas[n-1,toka-1],deltas[n-1,kolmas-1],1,gammas[n-1,toka-1],gammas[n-1,kolmas-1],0,vegas[n-1,toka-1],vegas[n-1,kolmas-1],0),
+        nrow=3,
+        ncol=3,
+        byrow=TRUE
+      )
 
-if (any(is.na(A))||any(is.na(B))){
-  optio_2_positio=optio_2_positio
-  optio_3_positio=optio_3_positio
-  underlying_positio=underlying_positio
-} else {
-optio_2_positio= solve(A,B)[1]
-optio_3_positio= solve(A,B)[2]
-underlying_positio= solve(A,B)[3]
-}
-Portfoliodelta = deltas[n,eka-1]
-Portfoliogamma = gammas[n,eka-1]
-Portfoliovega = vegas[n,eka-1]
+      B=c(-Portfoliodelta,-Portfoliogamma,-Portfoliovega)
 
-Portfoliovaluechange = as.numeric(data[n,eka])-as.numeric(data[n-1,eka])
-Replicatingvaluechange = (optio_2_positio*(as.numeric(data[n,toka])-as.numeric(data[n-1,toka]))
-                        +optio_3_positio*(as.numeric(data[n,kolmas])-as.numeric(data[n-1,kolmas]))
-                        +underlying_positio*(as.numeric(data[n,(length(data)-2)])-as.numeric(data[n-1,(length(data)-2)])))
-dailyerrors[n-1]=if(optio_2_positio==0&&optio_3_positio==0&&underlying_positio==0){0}else{Portfoliovaluechange+Replicatingvaluechange}
-counter= if(optio_2_positio==0&&optio_3_positio==0&&underlying_positio==0){counter+1}else{counter}
-}
-dailyerrors
-performance=sum(dailyerrors^2)/(length(data$daystomaturity)-2-counter)
-print(performance)
-print(indeksit)
-}
+      if (any(is.na(A))||any(is.na(B))){
+        optio_2_positio=optio_2_positio
+        optio_3_positio=optio_3_positio
+        underlying_positio=underlying_positio
+      } else {
+      optio_2_positio= solve(A,B)[1]
+      optio_3_positio= solve(A,B)[2]
+      underlying_positio= solve(A,B)[3]
+      }
+      Portfoliodelta = deltas[n,eka-1]
+      Portfoliogamma = gammas[n,eka-1]
+      Portfoliovega = vegas[n,eka-1]
+
+      Portfoliovaluechange = as.numeric(data[n,eka])-as.numeric(data[n-1,eka])
+      Replicatingvaluechange = (optio_2_positio*(as.numeric(data[n,toka])-as.numeric(data[n-1,toka]))
+                              +optio_3_positio*(as.numeric(data[n,kolmas])-as.numeric(data[n-1,kolmas]))
+                              +underlying_positio*(as.numeric(data[n,(length(data)-2)])-as.numeric(data[n-1,(length(data)-2)])))
+      dailyerrors[n-1]=if(optio_2_positio==0&&optio_3_positio==0&&underlying_positio==0){0}else{Portfoliovaluechange+Replicatingvaluechange}
+      counter= if(optio_2_positio==0&&optio_3_positio==0&&underlying_positio==0){counter+1}else{counter}
+    }
+    dailyerrors
+    performance=sum(dailyerrors^2)/(length(data$daystomaturity)-2-counter)
+    print(performance)
+    print(indeksit)
+  }
 
 },error=function(e){})
 }
