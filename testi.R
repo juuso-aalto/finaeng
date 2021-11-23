@@ -86,12 +86,12 @@ for (sheet_no in 1:12) {
           option_value_changes[k-1,i] = (value - previous_value)
           delta_hedge_value_changes[k-1,i] = -previous_delta * (underlying - previous_underlying)
           cashdesk[k,i] <- if (newdelta==0 || pastdelta ==0){cashdesk[k,i]}else{cashdesk[k-1,i]+(newdelta-pastdelta)*data$S[k]} #if new and pastdelta differ from zero, sell short delta change amount of current underlying.
-        }
+           }
         if (k==(length(data$daystomaturity)-1)) {
           cashdesk[k,i] <- cashdesk[k,i]+max(0,underlying-strike)-newdelta*underlying
           finalcash <- append(finalcash,cashdesk[k,i])
           no_hedge_cash <- append(no_hedge_cash,max(0,underlying-strike)-as.numeric(data[1,i+1]))
-        }
+          }
         # Update the state
         
         previous_value <- value
