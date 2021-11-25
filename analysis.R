@@ -6,6 +6,8 @@ sheets_absdiff_mean <- c()
 sheets_absdiff_std <- c()
 sheets_results2_mean <- c()
 sheets_results2_std <- c()
+sheets_absdiff2_mean <- c()
+sheets_absdiff2_std <- c()
 
 for (sheet_no in 1:12) {
   tryCatch({
@@ -198,7 +200,7 @@ for (sheet_no in 1:12) {
 data1 <- data1[-86,]
 
     #delta-vega-gamma hedge:
-    for (s in 1:1){
+    for (s in 2:2){
       tryCatch({
       
       kokodatat <- vector()
@@ -209,7 +211,7 @@ data1 <- data1[-86,]
       
       sheetresults2 <- c()
       sheetstds2 <- c()
-      sheetcashes <- c()
+      sheetabsdiffs <- c()
       for (m in 2:(length(get(datnam))-3)){
         if(length(which(!is.na(get(datnam)[,m])))==length(which(!is.na(get(datnam)[,2])))[1]){kokodatat<-append(kokodatat,m)}
       }
@@ -262,7 +264,7 @@ data1 <- data1[-86,]
           underlying_positio= solve(A,B)[3]
         }
         if (n==2){
-        cashdesk1[1] = -as.numeric(get(datnam)[1,z])-optio_2_positio*as.numeric(get(datnam)[1,toka])-optio_3_positio*as.numeric(get(datnam)[1,kolmas])-underlying_positio*as.numeric(get(datnam)$S[1])
+        cashdesk1[1] = -as.numeric(get(datnam)[1,kokodatat[z]])-optio_2_positio*as.numeric(get(datnam)[1,toka])-optio_3_positio*as.numeric(get(datnam)[1,kolmas])-underlying_positio*as.numeric(get(datnam)$S[1])
         }
         if (n>2){
         cashdesk1[n-1] = cashdesk1[n-2]-(optio_2_positio-optio_2_prev)*as.numeric(get(datnam)[n-1,toka])-(optio_3_positio-optio_3_prev)*as.numeric(get(datnam)[n-1,kolmas])-(underlying_positio-underlying_prev)*as.numeric(get(datnam)$S[n-1])
@@ -270,6 +272,7 @@ data1 <- data1[-86,]
         
         if (n==(length(which(!is.na(get(datnam)[,2])))+1)){
         cashdesk1[n-1] = cashdesk1[n-1]+optio_2_positio*as.numeric(get(datnam)[n-1,toka])+optio_3_positio*as.numeric(get(datnam)[n-1,kolmas])+underlying_positio*as.numeric(get(datnam)$S[n-1])
+        no_hedge_cash1 <- max(0,(get(datnam)$S[n-1]-as.numeric(colnames(get(datnam))[kokodatat[z]])))-as.numeric(get(datnam)[1,kokodatat[z]])
         }
         
         if (n<=(length(which(!is.na(get(datnam)[,2]))))){
@@ -288,11 +291,13 @@ data1 <- data1[-86,]
       dailyerrors
       performance=sum(dailyerrors^2)/(length(which(!is.na(get(datnam)[,2])))-1-counter)
       sheetresults2 <- append(sheetresults2,performance)
-      sheetcashes <- append(sheetcashes,cashdesk1[n-1])
+      sheetabsdiffs <- append(sheetabsdiffs,abs(no_hedge_cash1-cashdesk1[n-1]))
       }
       }
     sheets_results2_mean <- append(sheets_results2_mean,mean(sheetresults2))
     sheets_results2_std <- append(sheets_results2_std,sd(sheetresults2))
+    sheets_absdiff2_mean <- append(sheets_absdiff2_mean,mean(sheetabsdiffs))
+    sheets_absdiff2_std <- append(sheets_absdiff2_std,sd(sheetabsdiffs))
       },error=function(e){})
     }
 print(sheets_results_mean)
@@ -301,4 +306,5 @@ print(sheets_absdiff_mean)
 print(sheets_absdiff_std)
 print(sheets_results2_mean)
 print(sheets_results2_std)
-
+print(sheets_absdiff2_mean)
+print(sheets_absdiff2_std)
