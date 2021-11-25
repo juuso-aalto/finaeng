@@ -59,7 +59,7 @@ for (sheet_no in 1:12) {
         maturity <- data$daystomaturity[k]/252
         
         guess_a <- 0
-        guess_b <- 2 # Maximum guess may need to be adjusted according to the dataset
+        guess_b <- 10 # Maximum guess may need to be adjusted according to the dataset
         
         while (abs(guess_a - guess_b) > 0.0000001)  {
           result <- EuropeanOption("call",underlying,strike,0,riskFreeRate,maturity, (guess_a+guess_b) / 2)$value - value
@@ -195,11 +195,10 @@ for (sheet_no in 1:12) {
     sheets_absdiff_std <- append(sheets_absdiff_std,sd(abs(no_hedge_cash-finalcash)))
   },error=function(e){})
 }    
-
- 
+data1 <- data1[-86,]
 
     #delta-vega-gamma hedge:
-    for (s in 1:12){
+    for (s in 1:1){
       tryCatch({
       
       kokodatat <- vector()
@@ -210,7 +209,7 @@ for (sheet_no in 1:12) {
       
       sheetresults2 <- c()
       sheetstds2 <- c()
-      
+      sheetcashes <- c()
       for (m in 2:(length(get(datnam))-3)){
         if(length(which(!is.na(get(datnam)[,m])))==length(which(!is.na(get(datnam)[,2])))[1]){kokodatat<-append(kokodatat,m)}
       }
@@ -222,6 +221,8 @@ for (sheet_no in 1:12) {
       kokodatat2 <- kokodatat[-z]
       for (h in 1:(length(combn(kokodatat2,2))/2)){
         
+        
+        
       toka<-combn(kokodatat2,2)[,h][1]
       kolmas<-combn(kokodatat2,2)[,h][2]
       Portfoliodelta = get(dnam)[1,eka-1]
@@ -230,10 +231,15 @@ for (sheet_no in 1:12) {
       optio_2_positio=0
       optio_3_positio=0
       underlying_positio=0
+      optio_2_prev=0
+      optio_3_prev=0
+      underlying_prev=0
       counter=0
       
-      dailyerrors=c(rep(0,(length(get(datnam)$daystomaturity)-2)))
-      for (n in 2:(length(get(datnam)$daystomaturity)-1)){
+      
+      dailyerrors=c(rep(0,length(which(!is.na(get(datnam)[,2])))-1))
+      cashdesk1=c(rep(0,length(which(!is.na(get(datnam)[,2])))))
+      for (n in 2:(length(which(!is.na(get(datnam)[,2])))+1)){
         A=matrix(
           c(get(dnam)[n-1,toka-1],get(dnam)[n-1,kolmas-1],1,get(gnam)[n-1,toka-1],get(gnam)[n-1,kolmas-1],0,get(vnam)[n-1,toka-1],get(vnam)[n-1,kolmas-1],0),
           nrow=3,
@@ -242,6 +248,9 @@ for (sheet_no in 1:12) {
         )
         
         B=c(-Portfoliodelta,-Portfoliogamma,-Portfoliovega)
+        optio_2_prev=optio_2_positio
+        optio_3_prev=optio_3_positio
+        underlying_prev=underlying_positio
         
         if (any(is.na(A))||any(is.na(B))){
           optio_2_positio=optio_2_positio
@@ -252,6 +261,18 @@ for (sheet_no in 1:12) {
           optio_3_positio= solve(A,B)[2]
           underlying_positio= solve(A,B)[3]
         }
+        if (n==2){
+        cashdesk1[1] = -as.numeric(get(datnam)[1,z])-optio_2_positio*as.numeric(get(datnam)[1,toka])-optio_3_positio*as.numeric(get(datnam)[1,kolmas])-underlying_positio*as.numeric(get(datnam)$S[1])
+        }
+        if (n>2){
+        cashdesk1[n-1] = cashdesk1[n-2]-(optio_2_positio-optio_2_prev)*as.numeric(get(datnam)[n-1,toka])-(optio_3_positio-optio_3_prev)*as.numeric(get(datnam)[n-1,kolmas])-(underlying_positio-underlying_prev)*as.numeric(get(datnam)$S[n-1])
+        }
+        
+        if (n==(length(which(!is.na(get(datnam)[,2])))+1)){
+        cashdesk1[n-1] = cashdesk1[n-1]+optio_2_positio*as.numeric(get(datnam)[n-1,toka])+optio_3_positio*as.numeric(get(datnam)[n-1,kolmas])+underlying_positio*as.numeric(get(datnam)$S[n-1])
+        }
+        
+        if (n<=(length(which(!is.na(get(datnam)[,2]))))){
         Portfoliodelta = get(dnam)[n,eka-1]
         Portfoliogamma = get(gnam)[n,eka-1]
         Portfoliovega = get(vnam)[n,eka-1]
@@ -262,10 +283,12 @@ for (sheet_no in 1:12) {
                                   +underlying_positio*(as.numeric(get(datnam)[n,(length(get(datnam))-2)])-as.numeric(get(datnam)[n-1,(length(get(datnam))-2)])))
         dailyerrors[n-1]=if(optio_2_positio==0&&optio_3_positio==0&&underlying_positio==0){0}else{Portfoliovaluechange+Replicatingvaluechange}
         counter= if(optio_2_positio==0&&optio_3_positio==0&&underlying_positio==0){counter+1}else{counter}
+        }
       }
       dailyerrors
-      performance=sum(dailyerrors^2)/(length(get(datnam)$daystomaturity)-2-counter)
+      performance=sum(dailyerrors^2)/(length(which(!is.na(get(datnam)[,2])))-1-counter)
       sheetresults2 <- append(sheetresults2,performance)
+      sheetcashes <- append(sheetcashes,cashdesk1[n-1])
       }
       }
     sheets_results2_mean <- append(sheets_results2_mean,mean(sheetresults2))
