@@ -71,11 +71,95 @@ for (sheet_no in 1:12) {
           }
         }
         
-        volas[k,i] = guess_a
-        results = EuropeanOption("call",underlying,strike,0,riskFreeRate,maturity, guess_a)
+        volas[k,i] = if (guess_a>0.5){0}else{guess_a}
+        results = EuropeanOption("call",underlying,strike,0,riskFreeRate,maturity, (if (guess_a>0.5){0}else{guess_a}))
         deltas[k,i] = results$delta
         vegas[k,i] = results$vega
         gammas[k,i] = results$gamma
+        if (sheet_no==1){
+          volas1 <- volas
+          gammas1 <- gammas
+          vegas1 <- vegas
+          deltas1 <- deltas
+          data1 <- data
+        }
+        if (sheet_no==2){
+          volas2 <- volas
+          gammas2 <- gammas
+          vegas2 <- vegas
+          deltas2 <- deltas
+          data2 <- data
+        }
+        if (sheet_no==3){
+          volas3 <- volas
+          gammas3 <- gammas
+          vegas3 <- vegas
+          deltas3 <- deltas
+          data3 <- data
+        }
+        if (sheet_no==4){
+          volas4 <- volas
+          gammas4 <- gammas
+          vegas4 <- vegas
+          deltas4 <- deltas
+          data4 <- data
+        }
+        if (sheet_no==5){
+          volas5 <- volas
+          gammas5 <- gammas
+          vegas5 <- vegas
+          deltas5 <- deltas
+          data5 <- data
+        }
+        if (sheet_no==6){
+          volas6 <- volas
+          gammas6 <- gammas
+          vegas6 <- vegas
+          deltas6 <- deltas
+          data6 <- data
+        }
+        if (sheet_no==7){
+          volas7 <- volas
+          gammas7 <- gammas
+          vegas7 <- vegas
+          deltas7 <- deltas
+          data7 <- data
+        }
+        if (sheet_no==8){
+          volas8 <- volas
+          gammas8 <- gammas
+          vegas8 <- vegas
+          deltas8 <- deltas
+          data8 <- data
+        }
+        if (sheet_no==9){
+          volas9 <- volas
+          gammas9 <- gammas
+          vegas9 <- vegas
+          deltas9 <- deltas
+          data9 <- data
+        }
+        if (sheet_no==10){
+          volas10 <- volas
+          gammas10 <- gammas
+          vegas10 <- vegas
+          deltas10 <- deltas
+          data10 <- data
+        }
+        if (sheet_no==11){
+          volas11 <- volas
+          gammas11 <- gammas
+          vegas11 <- vegas
+          deltas11 <- deltas
+          data11 <- data
+        }
+        if (sheet_no==12){
+          volas12 <- volas
+          gammas12 <- gammas
+          vegas12 <- vegas
+          deltas12 <- deltas
+          data12 <- data
+        }
         
         cashdesk[1,i] <- -as.numeric(data[1,i+1])+deltas[1,i]*data$S[1] #initializing cashdesk at first day:
         #buying long call and selling short delta units of underlying 
@@ -101,7 +185,7 @@ for (sheet_no in 1:12) {
         }
       }
     }
-    
+
     daily_errors_squared <- (option_value_changes + delta_hedge_value_changes) ^2
     print(paste("Calculated sheet no ",sheet_no))
     strike_performances <- colSums(daily_errors_squared) / (length(data$daystomaturity)-2)
@@ -109,32 +193,49 @@ for (sheet_no in 1:12) {
     sheets_results_std <- append(sheets_results_std, sd(strike_performances[strike_performances != 0]))
     sheets_absdiff_mean <- append(sheets_absdiff_mean,mean(abs(no_hedge_cash-finalcash)))
     sheets_absdiff_std <- append(sheets_absdiff_std,sd(abs(no_hedge_cash-finalcash)))
-    
-    kokodatat <- vector()
-    for (m in 2:(length(data)-3)){
-      if(length(which(!is.na(data[,m])))==length(which(!is.na(data[,2])))[1]){kokodatat<-append(kokodatat,m)}
-    }
-    
-    sheetresults2 <- c()
-    sheetstds2 <- c()
-    # Do this 10 times for each sheet
-    for (s in 1:10){
-      indeksit<-sample(kokodatat,3,replace=FALSE)
-      eka<-sort(indeksit)[1]
-      toka<-sort(indeksit)[2]
-      kolmas<-sort(indeksit)[3]
-      Portfoliodelta = deltas[1,eka-1]
-      Portfoliogamma = gammas[1,eka-1]
-      Portfoliovega = vegas[1,eka-1]
+  },error=function(e){})
+}    
+
+ 
+
+    #delta-vega-gamma hedge:
+    for (s in 1:12){
+      tryCatch({
+      
+      kokodatat <- vector()
+      dnam <- paste("deltas",s,sep="")
+      gnam <- paste("gammas",s,sep="")
+      vnam <- paste("vegas",s,sep="")
+      datnam <- paste("data",s,sep="")
+      
+      sheetresults2 <- c()
+      sheetstds2 <- c()
+      
+      for (m in 2:(length(get(datnam))-3)){
+        if(length(which(!is.na(get(datnam)[,m])))==length(which(!is.na(get(datnam)[,2])))[1]){kokodatat<-append(kokodatat,m)}
+      }
+      
+      
+      for (z in 1:length(kokodatat)) {
+        
+      eka<-kokodatat[z]
+      kokodatat2 <- kokodatat[-z]
+      for (h in 1:(length(combn(kokodatat2,2))/2)){
+        
+      toka<-combn(kokodatat2,2)[,h][1]
+      kolmas<-combn(kokodatat2,2)[,h][2]
+      Portfoliodelta = get(dnam)[1,eka-1]
+      Portfoliogamma = get(gnam)[1,eka-1]
+      Portfoliovega = get(vnam)[1,eka-1]
       optio_2_positio=0
       optio_3_positio=0
       underlying_positio=0
       counter=0
       
-      dailyerrors=c(rep(0,(length(data$daystomaturity)-2)))
-      for (n in 2:(length(data$daystomaturity)-1)){
+      dailyerrors=c(rep(0,(length(get(datnam)$daystomaturity)-2)))
+      for (n in 2:(length(get(datnam)$daystomaturity)-1)){
         A=matrix(
-          c(deltas[n-1,toka-1],deltas[n-1,kolmas-1],1,gammas[n-1,toka-1],gammas[n-1,kolmas-1],0,vegas[n-1,toka-1],vegas[n-1,kolmas-1],0),
+          c(get(dnam)[n-1,toka-1],get(dnam)[n-1,kolmas-1],1,get(gnam)[n-1,toka-1],get(gnam)[n-1,kolmas-1],0,get(vnam)[n-1,toka-1],get(vnam)[n-1,kolmas-1],0),
           nrow=3,
           ncol=3,
           byrow=TRUE
@@ -151,25 +252,26 @@ for (sheet_no in 1:12) {
           optio_3_positio= solve(A,B)[2]
           underlying_positio= solve(A,B)[3]
         }
-        Portfoliodelta = deltas[n,eka-1]
-        Portfoliogamma = gammas[n,eka-1]
-        Portfoliovega = vegas[n,eka-1]
+        Portfoliodelta = get(dnam)[n,eka-1]
+        Portfoliogamma = get(gnam)[n,eka-1]
+        Portfoliovega = get(vnam)[n,eka-1]
         
-        Portfoliovaluechange = as.numeric(data[n,eka])-as.numeric(data[n-1,eka])
-        Replicatingvaluechange = (optio_2_positio*(as.numeric(data[n,toka])-as.numeric(data[n-1,toka]))
-                                  +optio_3_positio*(as.numeric(data[n,kolmas])-as.numeric(data[n-1,kolmas]))
-                                  +underlying_positio*(as.numeric(data[n,(length(data)-2)])-as.numeric(data[n-1,(length(data)-2)])))
+        Portfoliovaluechange = as.numeric(get(datnam)[n,eka])-as.numeric(get(datnam)[n-1,eka])
+        Replicatingvaluechange = (optio_2_positio*(as.numeric(get(datnam)[n,toka])-as.numeric(get(datnam)[n-1,toka]))
+                                  +optio_3_positio*(as.numeric(get(datnam)[n,kolmas])-as.numeric(get(datnam)[n-1,kolmas]))
+                                  +underlying_positio*(as.numeric(get(datnam)[n,(length(get(datnam))-2)])-as.numeric(get(datnam)[n-1,(length(get(datnam))-2)])))
         dailyerrors[n-1]=if(optio_2_positio==0&&optio_3_positio==0&&underlying_positio==0){0}else{Portfoliovaluechange+Replicatingvaluechange}
         counter= if(optio_2_positio==0&&optio_3_positio==0&&underlying_positio==0){counter+1}else{counter}
       }
       dailyerrors
-      performance=sum(dailyerrors^2)/(length(data$daystomaturity)-2-counter)
+      performance=sum(dailyerrors^2)/(length(get(datnam)$daystomaturity)-2-counter)
       sheetresults2 <- append(sheetresults2,performance)
-    }
+      }
+      }
     sheets_results2_mean <- append(sheets_results2_mean,mean(sheetresults2))
     sheets_results2_std <- append(sheets_results2_std,sd(sheetresults2))
-  },error=function(e){})
-}
+      },error=function(e){})
+    }
 print(sheets_results_mean)
 print(sheets_results_std)
 print(sheets_absdiff_mean)
