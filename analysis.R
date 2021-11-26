@@ -61,7 +61,7 @@ for (sheet_no in 1:12) {
         maturity <- data$daystomaturity[k]/252
         
         guess_a <- 0
-        guess_b <- 10 # Maximum guess may need to be adjusted according to the dataset
+        guess_b <- 2 # Maximum guess may need to be adjusted according to the dataset
         
         while (abs(guess_a - guess_b) > 0.0000001)  {
           result <- EuropeanOption("call",underlying,strike,0,riskFreeRate,maturity, (guess_a+guess_b) / 2)$value - value
@@ -198,10 +198,11 @@ for (sheet_no in 1:12) {
   },error=function(e){})
 }    
 data1 <- data1[-86,]
-
+deltas1 <- deltas1[-85,]
+gammas1 <- gammas1[-85,]
+vegas1 <- vegas1[-85,]
     #delta-vega-gamma hedge:
-    for (s in 2:2){
-      tryCatch({
+    for (s in 1:12){
       
       kokodatat <- vector()
       dnam <- paste("deltas",s,sep="")
@@ -227,9 +228,9 @@ data1 <- data1[-86,]
         
       toka<-combn(kokodatat2,2)[,h][1]
       kolmas<-combn(kokodatat2,2)[,h][2]
-      Portfoliodelta = get(dnam)[1,eka-1]
-      Portfoliogamma = get(gnam)[1,eka-1]
-      Portfoliovega = get(vnam)[1,eka-1]
+      Portfoliodelta = if(is.na(get(dnam)[1,eka-1])){0}else{get(dnam)[1,eka-1]}
+      Portfoliogamma = if(is.na(get(gnam)[1,eka-1])){0}else{get(gnam)[1,eka-1]}
+      Portfoliovega = if(is.na(get(vnam)[1,eka-1])){0}else{get(vnam)[1,eka-1]}
       optio_2_positio=0
       optio_3_positio=0
       underlying_positio=0
@@ -242,6 +243,7 @@ data1 <- data1[-86,]
       dailyerrors=c(rep(0,length(which(!is.na(get(datnam)[,2])))-1))
       cashdesk1=c(rep(0,length(which(!is.na(get(datnam)[,2])))))
       for (n in 2:(length(which(!is.na(get(datnam)[,2])))+1)){
+        if(n<=(length(which(!is.na(get(datnam)[,2]))))){
         A=matrix(
           c(get(dnam)[n-1,toka-1],get(dnam)[n-1,kolmas-1],1,get(gnam)[n-1,toka-1],get(gnam)[n-1,kolmas-1],0,get(vnam)[n-1,toka-1],get(vnam)[n-1,kolmas-1],0),
           nrow=3,
@@ -254,7 +256,7 @@ data1 <- data1[-86,]
         optio_3_prev=optio_3_positio
         underlying_prev=underlying_positio
         
-        if (any(is.na(A))||any(is.na(B))){
+        if (any(is.na(A))||any(is.na(B))||(Portfoliodelta==0&&Portfoliogamma==0&&Portfoliovega==0)){
           optio_2_positio=optio_2_positio
           optio_3_positio=optio_3_positio
           underlying_positio=underlying_positio
@@ -262,6 +264,7 @@ data1 <- data1[-86,]
           optio_2_positio= solve(A,B)[1]
           optio_3_positio= solve(A,B)[2]
           underlying_positio= solve(A,B)[3]
+        }
         }
         if (n==2){
         cashdesk1[1] = -as.numeric(get(datnam)[1,kokodatat[z]])-optio_2_positio*as.numeric(get(datnam)[1,toka])-optio_3_positio*as.numeric(get(datnam)[1,kolmas])-underlying_positio*as.numeric(get(datnam)$S[1])
@@ -275,11 +278,12 @@ data1 <- data1[-86,]
         no_hedge_cash1 <- max(0,(get(datnam)$S[n-1]-as.numeric(colnames(get(datnam))[kokodatat[z]])))-as.numeric(get(datnam)[1,kokodatat[z]])
         }
         
+        if (n<=(length(which(!is.na(get(datnam)[,2])))-1)){
+        Portfoliodelta = if(is.na(get(dnam)[n,eka-1])){Portfoliodelta}else{get(dnam)[n,eka-1]}
+        Portfoliogamma = if(is.na(get(gnam)[n,eka-1])){Portfoliogamma}else{get(gnam)[n,eka-1]}
+        Portfoliovega = if(is.na(get(vnam)[n,eka-1])){Portfoliovega}else{get(vnam)[n,eka-1]}
+        }
         if (n<=(length(which(!is.na(get(datnam)[,2]))))){
-        Portfoliodelta = get(dnam)[n,eka-1]
-        Portfoliogamma = get(gnam)[n,eka-1]
-        Portfoliovega = get(vnam)[n,eka-1]
-        
         Portfoliovaluechange = as.numeric(get(datnam)[n,eka])-as.numeric(get(datnam)[n-1,eka])
         Replicatingvaluechange = (optio_2_positio*(as.numeric(get(datnam)[n,toka])-as.numeric(get(datnam)[n-1,toka]))
                                   +optio_3_positio*(as.numeric(get(datnam)[n,kolmas])-as.numeric(get(datnam)[n-1,kolmas]))
@@ -298,7 +302,7 @@ data1 <- data1[-86,]
     sheets_results2_std <- append(sheets_results2_std,sd(sheetresults2))
     sheets_absdiff2_mean <- append(sheets_absdiff2_mean,mean(sheetabsdiffs))
     sheets_absdiff2_std <- append(sheets_absdiff2_std,sd(sheetabsdiffs))
-      },error=function(e){})
+    
     }
 print(sheets_results_mean)
 print(sheets_results_std)
