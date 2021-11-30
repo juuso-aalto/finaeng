@@ -11,6 +11,7 @@ fix_data <- function(data) {
   names(data)[1] <- 'daystomaturity'
   names(data)[no_columns - 2] <- 'S'
   names(data)[no_columns - 1] <- 'rate'
+  names(data)[no_columns] <- 'date'
   data$rate <- data$rate / 100
   for (t in 1:(length(data) - 1)) {
     for (g in 1:dim(data)[1]) {
@@ -26,8 +27,10 @@ fix_data <- function(data) {
 }
 
 # This function removes strikes w/o complete time series
-strip_incomplete_strikes <- function(data) {
-  data[, names(data)[!is.na(data[1,])]]
+# and selects the last 80 rows in order to retain comparability
+strip_data <- function(data) {
+  #data[, names(data)[!is.na(data[1,])]]
+  tail(data[, c("daystomaturity", "340", "360", "380", "400", "420", "440", "460", "480", "500", "520", "S", "rate", "date")], 80)
 }
 
 # This function calculates the implied volatility
@@ -59,7 +62,7 @@ calculate_greeks <- function(data) {
       }, error = function(e){} )
     }
   }
-  ret <- list("volas" = volas, "deltas" = deltas, "gammas" <- gammas, "vegas" <- vegas)
+  ret <- list("volas" = volas, "deltas" = deltas, "gammas" = gammas, "vegas" = vegas)
 }
 
 # This function calculates the performance for the following strategy:
@@ -106,11 +109,14 @@ single_delta_hedge <- function(data, greeks, strike_no, hedge_freq) {
   return (ret)
 }
 
-# First reporting item
+# First reporting item:
+# - Rehedging frequency 1 day
+# - Sheet 1
+# - Delta hedging
 sheet_no <- 1
 data <- read_excel("isx2010C.xls", sheet=sheet_no)
 data <- fix_data(data)
-data <- strip_incomplete_strikes(data)
+data <- strip_data(data)
 greeks <- calculate_greeks(data)
 print("Strike; Mean error squared; Total change")
 total_days <- length(data$daystomaturity)
@@ -120,4 +126,23 @@ for (i in 1:(length(data) - 4)) {
   print(paste(names(data)[i + 1], ret$mean_error_squared, ret$portfolio_value[total_days], sep = "; "))
   portfolio_values[1:total_days, i] <- ret$portfolio_value
 }
-plot_ly(z = ~portfolio_values, type = "surface") %>% layout(title="Rehedging frequency X")
+plot_ly(z = ~portfolio_values, type = "surface") %>% layout(title="Rehedging frequency 1 day")
+
+# Second reporting item:
+# - Rehedging frequency 1 day
+# - Average over all sheets
+# - Delta hedging
+portfolio_values <- matrix(nrow = total_days, ncol = length(data) - 4, data = 0)
+for (sheet_no in 1:12) {
+  data <- read_excel("isx2010C.xls", sheet=sheet_no)
+  data <- fix_data(data)
+  data <- strip_data(data)
+  greeks <- calculate_greeks(data)
+  total_days <- length(data$daystomaturity)
+  for (i in 1:(length(data) - 4)) {
+    ret <- single_delta_hedge(data, greeks, i, 1)
+    portfolio_values[1:total_days, i] <- portfolio_values[1:total_days, i] + ret$portfolio_value
+  }
+}
+portfolio_values <- portfolio_values / 12
+plot_ly(z = ~portfolio_values, type = "surface") %>% layout(title="Rehedging frequency 1 day")
