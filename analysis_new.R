@@ -218,8 +218,8 @@ bullspread_delta_hedge <- function(data, greeks, hedge_freq, strike_1_no, strike
     
     # The positions might change according to the strategy. The trading affects cash
     if (!is.na(greeks$deltas[day, strike_1_no]) && !is.na(greeks$deltas[day, strike_2_no]) && days_after_rehedge >= hedge_freq) {
-      position_cash[day] <- position_cash[day - 1] + (position_underlying + greeks$deltas[1, strike_1_no] - greeks$deltas[1, strike_2_no]) * data$S[day]
-      position_underlying <- -(greeks$deltas[1, strike_1_no] - greeks$deltas[1, strike_2_no])
+      position_cash[day] <- position_cash[day - 1] + (position_underlying + greeks$deltas[day, strike_1_no] - greeks$deltas[day, strike_2_no]) * data$S[day]
+      position_underlying <- -(greeks$deltas[day, strike_1_no] - greeks$deltas[day, strike_2_no])
       days_after_rehedge <- 1
     } else {
       days_after_rehedge <- days_after_rehedge + 1
