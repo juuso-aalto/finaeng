@@ -186,7 +186,54 @@ single_delta_gamma_hedge <- function(data, greeks, hedge_freq, strike_no, hedge_
   mean_error_squared <- mean(unlist(tracking_error) ^ 2)
   ret <- list("portfolio_value" = portfolio_value, "mean_error_squared" = mean_error_squared)
   return (ret)
+}
+
+# This function calculates the performance for the following strategy:
+# - Long 1 call with strike strike_1_no
+# - Short 1 call with strike strike_2_no
+# - A position in underlying s.t. the portfolio is delta neutral
+bullspread_delta_hedge <- function(data, greeks, hedge_freq, strike_1_no, strike_2_no) {
+  total_days <- length(data$daystomaturity)
+  securities_value <- vector("double", total_days) # Value of the portfolio's securities on day N
+  position_cash <- vector("double", total_days) # Cash position on day N
+  tracking_error <- vector("double", total_days - 1) # Tracking error E on day N+1
   
+  # Set the initial position
+  position_call_1 <- 1
+  position_call_2 <- -1
+  position_underlying <- -(greeks$deltas[1, strike_1_no] - greeks$deltas[1, strike_2_no])
+  days_after_rehedge <- if(is.na(position_underlying)) Inf else 1
+  position_underlying <- if(is.na(position_underlying)) 0 else position_underlying
+  securities_value[1] <- position_call_1 * data[1, strike_1_no + 1] + position_call_2 * data[1, strike_2_no + 1] + position_underlying * data$S[1]
+  position_cash[1] <- -(securities_value[[1]]) # Purchase the initial portfolio
+  
+  for (day in 2:(total_days - 1)) {
+    # The previously decided positions determine the change in portfolio's value. Cash stays the same
+    securities_value[day] <- position_call_1 * data[day, strike_1_no + 1] + position_call_2 * data[day, strike_2_no + 1] + position_underlying * data$S[day]
+    position_cash[day] <- position_cash[day - 1]
+    
+    tracking_error[day - 1] <- (position_call_1 * (data[day, strike_1_no + 1] - data[day - 1, strike_1_no + 1])
+                                + position_call_2 * (data[day, strike_2_no + 1] - data[day - 1, strike_2_no + 1])
+                                + position_underlying * (data$S[day] - data$S[day - 1]))
+    
+    # The positions might change according to the strategy. The trading affects cash
+    if (!is.na(greeks$deltas[day, strike_1_no]) && !is.na(greeks$deltas[day, strike_2_no]) && days_after_rehedge >= hedge_freq) {
+      position_cash[day] <- position_cash[day - 1] + (position_underlying + greeks$deltas[1, strike_1_no] - greeks$deltas[1, strike_2_no]) * data$S[day]
+      position_underlying <- -(greeks$deltas[1, strike_1_no] - greeks$deltas[1, strike_2_no])
+      days_after_rehedge <- 1
+    } else {
+      days_after_rehedge <- days_after_rehedge + 1
+    }
+  }
+  
+  # The positions are sold
+  position_cash[total_days] <- position_cash[total_days - 1] + position_call_1 * data[total_days, strike_1_no + 1] + position_call_2 * data[total_days, strike_2_no + 1] + position_underlying * data$S[total_days]
+  tracking_error[total_days - 1] <- position_call_1 * (data[total_days, strike_1_no + 1] - data[total_days - 1, strike_1_no + 1]) + position_call_2 * (data[total_days, strike_2_no + 1] - data[total_days - 1, strike_2_no + 1]) + position_underlying * (data$S[total_days] - data$S[total_days - 1])
+  
+  portfolio_value <- unlist(securities_value) + unlist(position_cash) # On each day, the portfolio's total value is sum of securities + cash
+  mean_error_squared <- mean(unlist(tracking_error) ^ 2)
+  ret <- list("portfolio_value" = portfolio_value, "mean_error_squared" = mean_error_squared)
+  return (ret)
 }
 
 # First reporting item:
