@@ -52,7 +52,7 @@ calculate_greeks <- function(data) {
       tryCatch({
         vola <- EuropeanOptionImpliedVolatility("call", value,
                                                   underlying, strike, dividendYield, riskFreeRate, maturity, 0.01)[1]
-        if (vola < 1) { # Sanity check: volatility cannot exceed 1
+        if (vola < 0.5) { # Sanity check: volatility cannot exceed 0.5
           volas[j, i - 1] <- vola
           result <- EuropeanOption("call", underlying, strike, dividendYield, riskFreeRate, maturity, vola)
           deltas[j, i - 1] <- result$delta
@@ -137,6 +137,9 @@ single_delta_gamma_hedge <- function(data, greeks, hedge_freq, strike_no, hedge_
                                    greeks$gammas[1, strike_no],
                                    greeks$deltas[1, hedge_strike_no],
                                    greeks$gammas[1, hedge_strike_no])
+    if (is.na(res[1]) || is.na(res[2])) {
+      stop()
+    }
     position_call_2 <- res[1]
     position_underlying <- res[2]
   }, error = function(e){})
@@ -173,7 +176,7 @@ single_delta_gamma_hedge <- function(data, greeks, hedge_freq, strike_no, hedge_
     } else {
       days_after_rehedge <- days_after_rehedge + 1
     }
-    print(paste(securities_value[[day]] + position_cash[[day]], position_underlying, position_call_2, data$daystomaturity[day]))
+    #print(paste(securities_value[[day]] + position_cash[[day]], position_underlying, position_call_2, data$daystomaturity[day]))
   }
   
   # The positions are sold
@@ -262,6 +265,7 @@ first_reporting_item <- function () {
 # - Average over all sheets
 # - Delta hedging
 second_reporting_item <- function () {
+  total_days <- length(data$daystomaturity)
   portfolio_values <- matrix(nrow = total_days, ncol = length(data) - 4, data = 0)
   for (sheet_no in 1:12) {
     data <- read_excel("isx2010C.xls", sheet=sheet_no)
@@ -297,4 +301,28 @@ third_reporting_item <- function () {
     portfolio_values[1:total_days, i] <- ret$portfolio_value
   }
   plot_ly(z = ~portfolio_values, type = "surface") %>% layout(title="Rehedging frequency 1 day")
+}
+
+# Fourth reporting item:
+# - Rehedging frequency 7 days
+# - Sheet average
+# - Delta-gamma hedging using the adjacent strike
+fourth_reporting_item <- function () {
+  total_days <- 80
+  portfolio_values <- matrix(nrow = total_days, ncol = 10, data = 0)
+  for (sheet_no in 1:12) {
+    data <- read_excel("isx2010C.xls", sheet=sheet_no)
+    data <- fix_data(data)
+    data <- strip_data(data)
+    greeks <- calculate_greeks(data)
+    total_days <- length(data$daystomaturity)
+    for (i in 1:10) {
+      ret <- single_delta_gamma_hedge(data, greeks, 7, i, i + 1)
+      portfolio_values[1:total_days, i] <- portfolio_values[1:total_days, i] + ret$portfolio_value
+      #print(sheet_no)
+      #print(portfolio_values)
+    }
+  }
+  portfolio_values <- portfolio_values / 12
+  plot_ly(z = ~portfolio_values, type = "surface") %>% layout(title="Rehedging frequency 7 day")
 }
