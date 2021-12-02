@@ -326,3 +326,31 @@ fourth_reporting_item <- function () {
   portfolio_values <- portfolio_values / 12
   plot_ly(z = ~portfolio_values, type = "surface") %>% layout(title="Rehedging frequency 7 day")
 }
+
+# Fifth reporting item:
+# - Rehedging frequency 1 day
+# - Sheet 1
+# - Delta-gamma hedging using all combinations, where the hedge strike > base strike
+fifth_reporting_item <- function () {
+  sheet_no <- 1
+  data <- read_excel("isx2010C.xls", sheet=sheet_no)
+  data <- fix_data(data)
+  data <- strip_data(data)
+  greeks <- calculate_greeks(data)
+  print("Strike; Mean error squared; Total change")
+  total_days <- length(data$daystomaturity)
+  portfolio_values <- matrix(nrow = total_days, ncol = length(data) - 4, data = 0)
+  count <- 0
+  for (i in 1:10) {
+    for (j in 1:10) {
+      if (j > i) {
+        count <- count + 1
+        print(paste(i, j))
+        ret <- single_delta_gamma_hedge(data, greeks, 7, i, j)
+        portfolio_values[1:total_days, i] <- portfolio_values[1:total_days, i] + ret$portfolio_value
+      }
+    }
+  }
+  portfolio_values[1:total_days, i] <- portfolio_values[1:total_days, i] / count
+  plot_ly(z = ~portfolio_values, type = "surface") %>% layout(title="Rehedging frequency 7 day")
+}
