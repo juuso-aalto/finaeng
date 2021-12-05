@@ -104,7 +104,7 @@ single_delta_hedge <- function(data, greeks, strike_no, hedge_freq) {
   tracking_error[total_days - 1] <- position_call * (data[total_days, strike_no + 1] - data[total_days - 1, strike_no + 1]) + position_underlying * (data$S[total_days] - data$S[total_days - 1])
   
   portfolio_value <- unlist(securities_value) + unlist(position_cash) # On each day, the portfolio's total value is sum of securities + cash
-  mean_error_squared <- mean(unlist(tracking_error) ^ 2)
+  mean_error_squared <- mean(unlist(tracking_error) ^ 2) * hedge_freq
   ret <- list("portfolio_value" = portfolio_value, "mean_error_squared" = mean_error_squared)
   return (ret)
 }
@@ -186,7 +186,7 @@ single_delta_gamma_hedge <- function(data, greeks, hedge_freq, strike_no, hedge_
                                      + position_underlying * (data$S[total_days] - data$S[total_days - 1]))
   
   portfolio_value <- unlist(securities_value) + unlist(position_cash) # On each day, the portfolio's total value is sum of securities + cash
-  mean_error_squared <- mean(unlist(tracking_error) ^ 2)
+  mean_error_squared <- mean(unlist(tracking_error) ^ 2)* hedge_freq
   ret <- list("portfolio_value" = portfolio_value, "mean_error_squared" = mean_error_squared)
   return (ret)
 }
@@ -234,7 +234,7 @@ bullspread_delta_hedge <- function(data, greeks, hedge_freq, strike_1_no, strike
   tracking_error[total_days - 1] <- position_call_1 * (data[total_days, strike_1_no + 1] - data[total_days - 1, strike_1_no + 1]) + position_call_2 * (data[total_days, strike_2_no + 1] - data[total_days - 1, strike_2_no + 1]) + position_underlying * (data$S[total_days] - data$S[total_days - 1])
   
   portfolio_value <- unlist(securities_value) + unlist(position_cash) # On each day, the portfolio's total value is sum of securities + cash
-  mean_error_squared <- mean(unlist(tracking_error) ^ 2)
+  mean_error_squared <- mean(unlist(tracking_error) ^ 2)* hedge_freq
   ret <- list("portfolio_value" = portfolio_value, "mean_error_squared" = mean_error_squared)
   return (ret)
 }
@@ -253,7 +253,7 @@ first_reporting_item <- function () {
   total_days <- length(data$daystomaturity)
   portfolio_values <- matrix(nrow = total_days, ncol = length(data) - 4)
   for (i in 1:(length(data) - 4)) {
-    ret <- single_delta_hedge(data, greeks, i, 1)
+    ret <- single_delta_hedge(data, greeks, i, 7)
     print(paste(names(data)[i + 1], ret$mean_error_squared, ret$portfolio_value[total_days], sep = "; "))
     portfolio_values[1:total_days, i] <- ret$portfolio_value
   }
@@ -265,8 +265,9 @@ first_reporting_item <- function () {
 # - Average over all sheets
 # - Delta hedging
 second_reporting_item <- function () {
-  total_days <- length(data$daystomaturity)
-  portfolio_values <- matrix(nrow = total_days, ncol = length(data) - 4, data = 0)
+  total_days <- 80
+  portfolio_values <- matrix(nrow = total_days, ncol = 10, data = 0)
+  portfolio_errors <- c(rep(0,10))
   for (sheet_no in 1:12) {
     data <- read_excel("isx2010C.xls", sheet=sheet_no)
     data <- fix_data(data)
@@ -274,11 +275,13 @@ second_reporting_item <- function () {
     greeks <- calculate_greeks(data)
     total_days <- length(data$daystomaturity)
     for (i in 1:(length(data) - 4)) {
-      ret <- single_delta_hedge(data, greeks, i, 1)
+      ret <- single_delta_hedge(data, greeks, i, 7)
       portfolio_values[1:total_days, i] <- portfolio_values[1:total_days, i] + ret$portfolio_value
+      portfolio_errors[i] <- portfolio_errors[i] + ret$mean_error_squared
     }
   }
   portfolio_values <- portfolio_values / 12
+  portfolio_errors <- portfolio_errors / 12
   plot_ly(z = ~portfolio_values, type = "surface") %>% layout(title="Rehedging frequency 1 day")
 }
 
@@ -332,25 +335,35 @@ fourth_reporting_item <- function () {
 # - Sheet 1
 # - Delta-gamma hedging using all combinations, where the hedge strike > base strike
 fifth_reporting_item <- function () {
-  sheet_no <- 1
-  data <- read_excel("isx2010C.xls", sheet=sheet_no)
-  data <- fix_data(data)
-  data <- strip_data(data)
-  greeks <- calculate_greeks(data)
-  print("Strike; Mean error squared; Total change")
-  total_days <- length(data$daystomaturity)
-  portfolio_values <- matrix(nrow = total_days, ncol = length(data) - 4, data = 0)
-  count <- 0
-  for (i in 1:10) {
-    for (j in 1:10) {
-      if (j > i) {
-        count <- count + 1
-        print(paste(i, j))
-        ret <- single_delta_gamma_hedge(data, greeks, 7, i, j)
-        portfolio_values[1:total_days, i] <- portfolio_values[1:total_days, i] + ret$portfolio_value
-      }
-    }
-  }
-  portfolio_values[1:total_days, i] <- portfolio_values[1:total_days, i] / count
-  plot_ly(z = ~portfolio_values, type = "surface") %>% layout(title="Rehedging frequency 7 day")
+     total_days <- 80
+     portfolio_values1 <- matrix(nrow = total_days, ncol = 10, data = 0)
+     portfolio_errors1 <- matrix(nrow = total_days, ncol = 10, data = 0)
+     for (sheet_no in 1:12){
+       portfolio_values <- matrix(nrow = total_days, ncol = 10, data = 0)
+       portfolio_errors <- matrix(nrow = total_days, ncol = 10, data = 0)
+       data <- read_excel("isx2010C.xls", sheet=sheet_no)
+       data <- fix_data(data)
+       data <- strip_data(data)
+       greeks <- calculate_greeks(data)
+       total_days <- length(data$daystomaturity)
+       count <- 0
+       for (i in 1:10) {
+           for (j in 1:10) {
+               if (j > i) {
+                   count <- count + 1
+                   ret <- single_delta_gamma_hedge(data, greeks, 1, i, j)
+                   portfolio_values[1:total_days, i] <- portfolio_values[1:total_days, i] + ret$portfolio_value
+                   portfolio_errors[1:total_days, i] <- portfolio_errors[1:total_days, i] + ret$mean_error_squared
+                 }
+             }
+         }
+       portfolio_values[1:total_days, i] <- portfolio_values[1:total_days, i] / count
+       portfolio_errors[1:total_days, i] <- portfolio_errors[1:total_days, i] / count
+       portfolio_values1 <- portfolio_values1 + portfolio_values
+       portfolio_errors1 <- portfolio_errors1 + portfolio_errors
+       }
+     portfolio_values1 <- portfolio_values1 / 12
+     portfolio_errors1 <- portfolio_errors1 / 12
+     plot_ly(z = ~portfolio_values1, type = "surface") %>% layout(title="Rehedging frequency 7 day")
 }
+
