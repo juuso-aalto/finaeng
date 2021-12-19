@@ -481,14 +481,15 @@ seventh_reporting_item <- function () {
     greeks <- calculate_greeks(data)
     total_days <- length(data$daystomaturity)
     for (i in 1:(length(data) - 5)) {
-      ret <- bullspread_delta_hedge(data, greeks, 1, i, i + 1)
+      ret <- bullspread_delta_hedge(data, greeks, 7, i, i + 1)
       portfolio_values[1:total_days, i] <- portfolio_values[1:total_days, i] + ret$portfolio_value
       portfolio_errors[i] <- portfolio_errors[i] + ret$mean_error_squared
     }
   }
   portfolio_values <- portfolio_values / 12
   portfolio_errors <- portfolio_errors / 12
-  plot_ly(z = ~portfolio_values, type = "surface") %>% layout(title="Rehedging frequency 1 day")
+  print(mean(portfolio_values[80,1:9]))
+  plot_ly(z = ~portfolio_values, type = "surface") %>% layout(title="Rehedging frequency 7 days")
 }
 
 # Eigth reporting item:
@@ -517,3 +518,53 @@ eigth_reporting_item <- function () {
   portfolio_errors <- portfolio_errors / 12
   print(paste("Frequency: ", freq, ", mean error = ", mean(portfolio_errors), ", value = ", mean(portfolio_values)))
 }
+
+# Ninth reporting item:
+# - Bullspread portfolio, i:th strike long and the adjacent strike i+1 short
+# - Rehedging frequency 7 days
+# - Average over all sheets
+# - Delta-gamma hedging with the strike i+2
+ninth_reporting_item <- function () {
+  total_days <- 80
+  portfolio_values <- matrix(nrow = total_days, ncol = 10, data = 0)
+  for (sheet_no in 1:12) {
+    data <- read_excel("isx2010C.xls", sheet=sheet_no)
+    data <- fix_data(data)
+    data <- strip_data(data)
+    greeks <- calculate_greeks(data)
+    total_days <- length(data$daystomaturity)
+    for (i in 1:9) {
+      ret <- bullspread_delta_gamma_hedge(data, greeks, 7, i, i + 1, i + 2)
+      portfolio_values[1:total_days, i] <- portfolio_values[1:total_days, i] + ret$portfolio_value
+      #print(sheet_no)
+      #print(portfolio_values)
+    }
+  }
+  portfolio_values <- portfolio_values / 12
+  plot_ly(z = ~portfolio_values, type = "surface") %>% layout(title="Rehedging frequency 7 day")
+}
+
+# Tenth reporting item:
+# - Bullspread portfolio, i:th strike long and the adjacent strike i+1 short
+# - Rehedging frequency 7 days
+# - Sheet 1
+# - Delta-gamma hedging with the strike 520
+tenth_reporting_item <- function () {
+  sheet_no <- 1
+  data <- read_excel("isx2010C.xls", sheet=sheet_no)
+  data <- fix_data(data)
+  data <- strip_data(data)
+  greeks <- calculate_greeks(data)
+  print("Strike; Mean error squared; Total change")
+  total_days <- length(data$daystomaturity)
+  portfolio_values <- matrix(nrow = total_days, ncol = length(data) - 4)
+  for (i in 1:(length(data) - 5)) {
+    ret <- bullspread_delta_gamma_hedge(data, greeks, 7, i, i + 1, 10)
+    print(paste(names(data)[i + 1], ret$mean_error_squared, ret$portfolio_value[total_days], sep = "; "))
+    portfolio_values[1:total_days, i] <- ret$portfolio_value
+  }
+  print(mean(portfolio_values[80,1:9]))
+  
+  plot_ly(z = ~portfolio_values, type = "surface") %>% layout(title="Rehedging frequency 7 days")
+}
+
